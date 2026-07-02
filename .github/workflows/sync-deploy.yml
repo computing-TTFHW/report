@@ -324,7 +324,7 @@ jobs:
           echo "Deployed commit: ${{ steps.push.outputs.commit_sha }}"
           echo "GitHub Pages will deploy from docs/ on the pushed branch."
           echo "Allow 1-2 minutes for Pages to reflect the update."
-          echo "URL: https://kerer-ai.github.io/ttfhw-report/"
+          echo "URL: https://computing-TTFHW.github.io/report/"
 
       # ============================================================
       # Step 14: Workflow summary
