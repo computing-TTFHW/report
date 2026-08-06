@@ -69,11 +69,27 @@ function loadReportData(repoName: string): any {
 
   if (candidates.length > 0) {
     const reportPath = path.join(JSON_DIR, candidates[0].file)
-    const rawData = fs.readFileSync(reportPath, 'utf-8')
+    const rawData = readReportText(reportPath)
     return JSON.parse(rawData)
   }
 
   throw new Error(`Report not found for ${repoName}`)
+}
+
+/**
+ * 读取报告文件内容，兼容 UTF-8 / GBK / GB18030 等编码。
+ * 优先按 UTF-8 严格解码，失败时回退到 GBK 系列编码，避免中文状态值
+ * （如「成功」）被错误解码为乱码导致解析异常。
+ */
+function readReportText(reportPath: string): string {
+  const buffer = fs.readFileSync(reportPath)
+  try {
+    // 严格 UTF-8 解码：遇到非法字节序列会抛错，从而触发编码回退
+    return new TextDecoder('utf-8', { fatal: true }).decode(buffer)
+  } catch {
+    // 回退：GB18030 是 GBK 的超集，可覆盖绝大多数中文编码场景
+    return new TextDecoder('gb18030').decode(buffer)
+  }
 }
 
 // ======================== Summary ========================
