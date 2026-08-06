@@ -110,11 +110,29 @@ export function getRepoDetail(repoName: string): RepoDetail | null {
 
 // ======================== Normalization ========================
 
+/**
+ * 兼容 final_results 的两种结构：
+ *  1. 标准子对象结构：{ build: { status }, ut: { status }, sample: { status } }
+ *  2. 扁平结构：{ build_status, unit_test_status, sample_execution_status }
+ * 统一归一化为标准子对象结构返回。
+ */
+function resolveFinalResults(data: any): { build: any; ut: any; sample: any } {
+  const fr = data.final_results || {}
+  const build = fr.build && typeof fr.build === 'object'
+    ? fr.build
+    : { status: fr.build_status ?? fr.build }
+  const ut = fr.ut && typeof fr.ut === 'object'
+    ? fr.ut
+    : { status: fr.unit_test_status ?? fr.ut }
+  const sample = fr.sample && typeof fr.sample === 'object'
+    ? fr.sample
+    : { status: fr.sample_execution_status ?? fr.sample }
+  return { build, ut, sample }
+}
+
 function normalizeToSummary(name: string, data: any): RepoSummary {
   const meta = data.metadata || {}
-  const build = data.final_results?.build || {}
-  const ut = data.final_results?.ut || {}
-  const sample = data.final_results?.sample || {}
+  const { build, ut, sample } = resolveFinalResults(data)
   const repoInfo = data.repo_info || {}
   const origMeta = data.__original?.metadata
   const repoUrl = (meta.repo_url && meta.repo_url !== 'unknown') ? meta.repo_url
@@ -195,6 +213,7 @@ function normalizeToSummary(name: string, data: any): RepoSummary {
 
 function normalizeToDetail(name: string, data: any): RepoDetail {
   const summary = normalizeToSummary(name, data)
+  const { build, ut } = resolveFinalResults(data)
 
   return {
     ...summary,
@@ -202,8 +221,8 @@ function normalizeToDetail(name: string, data: any): RepoDetail {
     branch: data.metadata?.branch || data.repo_info?.branch || 'master',
     timeline: extractTimeline(data),
     attempts: extractAttempts(data),
-    buildResult: normalizeBuildResult(data.final_results?.build, data.execution_log),
-    utStats: normalizeUtStats(data.final_results?.ut, data.execution_log, data.problems_encountered),
+    buildResult: normalizeBuildResult(build, data.execution_log),
+    utStats: normalizeUtStats(ut, data.execution_log, data.problems_encountered),
     documentation: normalizeDocChecklist(data.document_reading_summary),
     documentReadingSummary: data.document_reading_summary,
     dependencies: normalizeDependenciesFromDoc(data.document_reading_summary),
@@ -479,7 +498,7 @@ function normalizeStatus(status: any): ResultStatus {
   const s = raw.toLowerCase()
 
   // -- Exact-match English standard values --
-  if (s === 'success' || s === 'passed') return 'success'
+  if (s === 'success' || s === 'passed' || s === 'pass' || s === 'passing') return 'success'
   if (s === 'failed' || s === 'failure' || s === 'error' || s === 'blocked') return 'failed'
   if (s === 'partial_success' || s === 'partial_failure' || s === 'mainly_success' || s === 'mostly_success') return 'partial_success'
   if (s === 'skipped') return 'skipped'
