@@ -21,12 +21,12 @@ export function getAllRepoNames(): string[] {
       .replace(/_final$/, '')
     const key = normalizeRepoName(rawName).toLowerCase().replace(/[-_]/g, '-')
 
-    // 同一仓库多份文件时，选优先级最高的（WSL > Ubuntu，日期越新越好）
+    // 同一仓库多份文件时，日期越新越好；同日期时 WSL > Ubuntu > 其他
     let score = 0
-    if (dirent.name.startsWith('verification_report_WSL_')) score += 2000
-    else if (dirent.name.startsWith('verification_report_Ubuntu_')) score += 1000
+    if (dirent.name.startsWith('verification_report_WSL_')) score += 2
+    else if (dirent.name.startsWith('verification_report_Ubuntu_')) score += 1
     const dateMatch = dirent.name.match(/_(\d{8})(?:_\d{6})?\.json$/)
-    if (dateMatch) score += parseInt(dateMatch[1], 10)
+    if (dateMatch) score += parseInt(dateMatch[1], 10) * 100
 
     const existing = seen.get(key)
     if (!existing || score > existing.score) {
@@ -55,11 +55,11 @@ function loadReportData(repoName: string): any {
     if (normalizeRepoName(rawName).toLowerCase().replace(/[-_]/g, '-') ===
         normalizeRepoName(repoName).toLowerCase().replace(/[-_]/g, '-')) {
       let score = 0
-      if (filename.startsWith('verification_report_WSL_')) score += 2000
-      else if (filename.startsWith('verification_report_Ubuntu_')) score += 1000
+      if (filename.startsWith('verification_report_WSL_')) score += 2
+      else if (filename.startsWith('verification_report_Ubuntu_')) score += 1
 
       const dateMatch = filename.match(/_(\d{8})(?:_\d{6})?\.json$/)
-      if (dateMatch) score += parseInt(dateMatch[1], 10)
+      if (dateMatch) score += parseInt(dateMatch[1], 10) * 100
 
       candidates.push({ file: filename, score })
     }
